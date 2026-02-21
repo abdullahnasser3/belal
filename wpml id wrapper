@@ -1419,12 +1419,20 @@ final class WPML_Meta_ID_Mapper_UI {
                         continue;
                     }
 
-                    // Convert the IDs from source language to target language
+                    // Convert taxonomy references from source language to target language.
                     $converted = $this->map_meta_value_by_rule($raw, $synthetic_rule, $target_lang, $actual_source_lang);
                     
-                    // Normalize both values for comparison
+                    // Normalize values for robust comparison.
+                    $source_normalized = is_string($raw) ? maybe_unserialize($raw) : $raw;
                     $current_normalized = is_string($current) ? maybe_unserialize($current) : $current;
                     $converted_normalized = is_string($converted) ? maybe_unserialize($converted) : $converted;
+
+                    // If mapped value is identical to source on translated posts, mapping likely failed.
+                    // Do not overwrite translated post with original-language taxonomy values.
+                    $is_translated_context = ($source_post_id > 0 && $actual_source_lang !== null && $actual_source_lang !== '' && $target_lang !== $actual_source_lang);
+                    if ($is_translated_context && $converted_normalized === $source_normalized) {
+                        continue;
+                    }
                     
                     // Check if current is empty (null, empty string, or empty array)
                     $current_is_empty = ($current_normalized === '' || $current_normalized === null || (is_array($current_normalized) && empty($current_normalized)));
