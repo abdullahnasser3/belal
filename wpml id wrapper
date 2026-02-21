@@ -1392,7 +1392,8 @@ final class WPML_Meta_ID_Mapper_UI {
                     $synthetic_rule = [
                         'type' => 'term',
                         'object_type' => $taxonomy,
-                        'storage_mode' => 'id',
+                        // Use auto so non-numeric values (name/slug) can also resolve to translated term IDs.
+                        'storage_mode' => 'auto',
                     ];
 
                     // Get current value in translated post
