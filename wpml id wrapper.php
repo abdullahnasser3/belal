@@ -2229,7 +2229,8 @@ final class WPML_Meta_ID_Mapper_UI {
             if ($id_int <= 0) {
                 return $value;
             }
-            $translated = apply_filters('wpml_object_id', $id_int, $object_type, true, $target_lang);
+            // Ask WPML for a strict translation first (do not auto-return original ID).
+            $translated = apply_filters('wpml_object_id', $id_int, $object_type, false, $target_lang);
             if ($translated) {
                 return (int) $translated;
             }
@@ -2238,7 +2239,7 @@ final class WPML_Meta_ID_Mapper_UI {
             if ($type === 'term') {
                 $fallback_term_id = $this->term_id_from_term_taxonomy_id($id_int, $object_type);
                 if ($fallback_term_id > 0) {
-                    $translated_fallback = apply_filters('wpml_object_id', $fallback_term_id, $object_type, true, $target_lang);
+                    $translated_fallback = apply_filters('wpml_object_id', $fallback_term_id, $object_type, false, $target_lang);
                     if ($translated_fallback) {
                         return (int) $translated_fallback;
                     }
@@ -2264,7 +2265,7 @@ final class WPML_Meta_ID_Mapper_UI {
                 return $value;
             }
 
-            $translated_id = apply_filters('wpml_object_id', $source_id, $object_type, true, $target_lang);
+            $translated_id = apply_filters('wpml_object_id', $source_id, $object_type, false, $target_lang);
             if (!$translated_id) {
                 return $value;
             }
@@ -2277,7 +2278,7 @@ final class WPML_Meta_ID_Mapper_UI {
                 return $value;
             }
 
-            $translated_id = apply_filters('wpml_object_id', $source_id, $object_type, true, $target_lang);
+            $translated_id = apply_filters('wpml_object_id', $source_id, $object_type, false, $target_lang);
             if (!$translated_id) {
                 return $value;
             }
@@ -2300,7 +2301,7 @@ final class WPML_Meta_ID_Mapper_UI {
             if (!$source_id) {
                 return $value;
             }
-            $translated_id = apply_filters('wpml_object_id', $source_id, $object_type, true, $target_lang);
+            $translated_id = apply_filters('wpml_object_id', $source_id, $object_type, false, $target_lang);
             if (!$translated_id) {
                 return $value;
             }
@@ -2316,7 +2317,7 @@ final class WPML_Meta_ID_Mapper_UI {
             if (!$source_id) {
                 return $value;
             }
-            $translated_id = apply_filters('wpml_object_id', $source_id, $object_type, true, $target_lang);
+            $translated_id = apply_filters('wpml_object_id', $source_id, $object_type, false, $target_lang);
             if (!$translated_id) {
                 return $value;
             }
