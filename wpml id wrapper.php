@@ -1367,106 +1367,99 @@ final class WPML_Meta_ID_Mapper_UI {
         $rules = $this->get_repeater_rules();
         if (empty($rules)) {
             return false;
-diff --git a/wpml id wrapper b/wpml id wrapper
-index bcfa83dcf7bc03ee8fb32e9ed7485986cbc5ec3e..a349c75632e601baed36efe31e52a843eef0507a 100644
---- a/wpml id wrapper	
-+++ b/wpml id wrapper	
-@@ -1370,82 +1370,91 @@ final class WPML_Meta_ID_Mapper_UI {
-         }
- 
-         static $running = [];
-         if (!empty($running[$post_id])) {
-             return false;
-         }
-         $running[$post_id] = true;
-         $updated_any = false;
- 
-         try {
-             $source_post_id = $this->get_original_post_id($post_id, $post->post_type, $source_lang);
-             if ($source_post_id <= 0 || $source_post_id === $post_id) {
-                 $source_post_id = 0;
-             }
- 
-             foreach ($rules as $rule) {
-                 if ($rule['post_type'] !== $post->post_type) {
-                     continue;
-                 }
-                 foreach ($rule['sub_fields'] as $sub) {
-                     $meta_key = $sub['meta_key'];
-                     $taxonomy = $sub['taxonomy'];
-                     $synthetic_rule = [
-                         'type' => 'term',
-                         'object_type' => $taxonomy,
--                        'storage_mode' => 'id',
-+                        // Use auto so non-numeric values (name/slug) can also resolve to translated term IDs.
-+                        'storage_mode' => 'auto',
-                     ];
- 
-                     // Get current value in translated post
-                     $current = get_post_meta($post_id, $meta_key, true);
-                     
-                     // Get source value: always from source post if available, otherwise from current post
-                     $raw = null;
-                     $actual_source_lang = null;
-                     
-                     if ($source_post_id > 0) {
-                         // We have a source post - get value from it
-                         $raw = get_post_meta($source_post_id, $meta_key, true);
-                         $source_lang_info = $this->get_lang_info($source_post_id);
-                         $actual_source_lang = !empty($source_lang_info['language_code']) ? $source_lang_info['language_code'] : $source_lang;
-                     } else {
-                         // No source post - use current post value
-                         $raw = $current;
-                         $actual_source_lang = $source_lang;
-                     }
-                     
-                     // Skip if source value is empty (but allow '0' as valid value)
-                     if ($raw === '' || $raw === null || (is_array($raw) && empty($raw))) {
-                         continue;
-                     }
- 
--                    // Convert the IDs from source language to target language
-+                    // Convert taxonomy references from source language to target language.
-                     $converted = $this->map_meta_value_by_rule($raw, $synthetic_rule, $target_lang, $actual_source_lang);
-                     
--                    // Normalize both values for comparison
-+                    // Normalize values for robust comparison.
-+                    $source_normalized = is_string($raw) ? maybe_unserialize($raw) : $raw;
-                     $current_normalized = is_string($current) ? maybe_unserialize($current) : $current;
-                     $converted_normalized = is_string($converted) ? maybe_unserialize($converted) : $converted;
-+
-+                    // If mapped value is identical to source on translated posts, mapping likely failed.
-+                    // Do not overwrite translated post with original-language taxonomy values.
-+                    $is_translated_context = ($source_post_id > 0 && $actual_source_lang !== null && $actual_source_lang !== '' && $target_lang !== $actual_source_lang);
-+                    if ($is_translated_context && $converted_normalized === $source_normalized) {
-+                        continue;
-+                    }
-                     
-                     // Check if current is empty (null, empty string, or empty array)
-                     $current_is_empty = ($current_normalized === '' || $current_normalized === null || (is_array($current_normalized) && empty($current_normalized)));
-                     
-                     // Deep comparison for arrays
-                     $needs_update = false;
-                     if ($current_is_empty) {
-                         // Current is empty but we have a converted value - update
-                         $needs_update = true;
-                     } elseif (is_array($current_normalized) && is_array($converted_normalized)) {
-                         // Compare arrays recursively
-                         $needs_update = ($current_normalized !== $converted_normalized);
-                     } elseif ($current_normalized !== $converted_normalized) {
-                         $needs_update = true;
-                     }
-                     
-                     if ($needs_update) {
-                         // Preserve serialization format if original was serialized
-                         $value_to_save = $converted;
-                         if (is_string($raw) && maybe_unserialize($raw) !== $raw) {
-                             // Original was serialized, serialize the converted value
-                             $value_to_save = maybe_serialize($converted);
-                         }
-                         // Force update: delete old meta first to ensure clean save
-                         delete_post_meta($post_id, $meta_key);
+        }
 
+        static $running = [];
+        if (!empty($running[$post_id])) {
+            return false;
+        }
+
+        $running[$post_id] = true;
+        $updated_any = false;
+
+        try {
+            $source_post_id = $this->get_original_post_id($post_id, $post->post_type, $source_lang);
+            if ($source_post_id <= 0 || $source_post_id === $post_id) {
+                $source_post_id = 0;
+            }
+
+            foreach ($rules as $rule) {
+                if ($rule['post_type'] !== $post->post_type) {
+                    continue;
+                }
+
+                foreach ($rule['sub_fields'] as $sub) {
+                    $meta_key = $sub['meta_key'];
+                    $taxonomy = $sub['taxonomy'];
+                    $synthetic_rule = [
+                        'type' => 'term',
+                        'object_type' => $taxonomy,
+                        'storage_mode' => 'auto',
+                    ];
+
+                    $current = get_post_meta($post_id, $meta_key, true);
+
+                    $raw = null;
+                    $actual_source_lang = null;
+                    if ($source_post_id > 0) {
+                        $raw = get_post_meta($source_post_id, $meta_key, true);
+                        $source_lang_info = $this->get_lang_info($source_post_id);
+                        $actual_source_lang = !empty($source_lang_info['language_code']) ? $source_lang_info['language_code'] : $source_lang;
+                    } else {
+                        $raw = $current;
+                        $actual_source_lang = $source_lang;
+                    }
+
+                    if ($raw === '' || $raw === null || (is_array($raw) && empty($raw))) {
+                        continue;
+                    }
+
+                    $converted = $this->map_meta_value_by_rule($raw, $synthetic_rule, $target_lang, $actual_source_lang);
+
+                    $source_normalized = is_string($raw) ? maybe_unserialize($raw) : $raw;
+                    $current_normalized = is_string($current) ? maybe_unserialize($current) : $current;
+                    $converted_normalized = is_string($converted) ? maybe_unserialize($converted) : $converted;
+
+                    $is_translated_context = (
+                        $source_post_id > 0
+                        && $actual_source_lang !== null
+                        && $actual_source_lang !== ''
+                        && $target_lang !== $actual_source_lang
+                    );
+                    if ($is_translated_context && $converted_normalized === $source_normalized) {
+                        continue;
+                    }
+
+                    $current_is_empty = (
+                        $current_normalized === ''
+                        || $current_normalized === null
+                        || (is_array($current_normalized) && empty($current_normalized))
+                    );
+
+                    $needs_update = false;
+                    if ($current_is_empty) {
+                        $needs_update = true;
+                    } elseif (is_array($current_normalized) && is_array($converted_normalized)) {
+                        $needs_update = ($current_normalized !== $converted_normalized);
+                    } elseif ($current_normalized !== $converted_normalized) {
+                        $needs_update = true;
+                    }
+
+                    if ($needs_update) {
+                        $value_to_save = $converted;
+                        if (is_string($raw) && maybe_unserialize($raw) !== $raw) {
+                            $value_to_save = maybe_serialize($converted);
+                        }
+
+                        delete_post_meta($post_id, $meta_key);
+                        update_post_meta($post_id, $meta_key, $value_to_save);
+                        $updated_any = true;
+                    }
+                }
+            }
+        } finally {
+            unset($running[$post_id]);
+        }
 
         return $updated_any;
     }
